@@ -1,0 +1,66 @@
+(()=>{
+  'use strict';
+  const app=document.getElementById('app');
+  const slides=[...document.querySelectorAll('[data-slide]')];
+  const dots=document.getElementById('dots');
+  const toast=document.getElementById('toast');
+  const dialog=document.getElementById('gameDialog');
+  const dialogContent=document.getElementById('dialogContent');
+  const teacherPanel=document.getElementById('teacherPanel');
+  const teacherStep=document.getElementById('teacherStep');
+  const teacherScript=document.getElementById('teacherScript');
+  const teacherNote=document.getElementById('teacherNote');
+  const powerBar=document.getElementById('powerBar');
+  const powerText=document.getElementById('powerText');
+  const scenarioStep=document.getElementById('scenarioStep');
+  const scenarioTitle=document.getElementById('scenarioTitle');
+  const focus=document.getElementById('missionFocus');
+  const focusLabel=document.getElementById('focusLabel');
+  const stepCue=document.getElementById('stepCue');
+
+  let current=0;
+  let resourceMode=false;
+  let resourceSlide=6;
+  let power=0;
+  let sound=true;
+  let charge=1;
+  let childNames=[];
+  const completed=new Set();
+  const commandDone=new Set();
+  const emotionDone=new Set();
+  const chargeDone=new Set();
+
+  const steps=[
+    {slide:0,title:'DO NOT PRESS',cue:'Не нажимай красную кнопку… или всё-таки нажмёшь? 🔴',focus:[5.2,37.5,29.5,43],label:'КРАСНАЯ КНОПКА',action:'red',script:'Максимально серьёзно скажите: «Эту кнопку точно нельзя нажимать». Дайте детям самим захотеть нарушить запрет.',note:'0–3 мин · Интрига. После клика театрально испугайтесь: «Ой…».'},
+    {slide:0,title:'ENGLISH MODE ACTIVATED',cue:'English Mode загружается… ⚡',focus:[35.3,37.5,30.1,43],label:'АКТИВИРУЙ',action:'loading',script:'После запуска на 20–30 секунд «перестаньте понимать» русский: на русские вопросы отвечайте только «Sorry?» и жестами.',note:'3–4 мин · Задача — создать ощущение, что класс попал в игру.'},
+    {slide:0,title:'INCOMING CALL',cue:'Кто звонит? Выбирай ACCEPT 📞',focus:[67.1,36.5,31.2,44],label:'ОТВЕТЬ BOO',action:'accept',script:'DECLINE можно нажать ради шутки: Boo тут же звонит снова. Затем дети сами выбирают ACCEPT.',note:'4–5 мин · После ACCEPT Boo впервые говорит Hello.'},
+    {slide:1,title:'BOO SAYS HELLO',cue:'Помаши Boo и скажи: HELLO! 👋',focus:[2.1,33.3,32.1,49],label:'HELLO!',action:'hello',script:'Не переводите Hello. Просто машите рукой: «Hello!» Дети сами считывают смысл. Повторите несколько раз с радостью.',note:'5–7 мин · Первое самостоятельное понимание английского.'},
+    {slide:1,title:'HELLO BATTLE',cue:'Скажи HELLO семью смешными голосами 🎤',focus:[34.7,33.3,31.8,49],label:'HELLO BATTLE',action:'battle',script:'Используйте 7 голосов: мышка, гигант, робот, сонный, привидение, замёрзший и CRAZY. Это повторение без ощущения зубрёжки.',note:'7–10 мин · Произносим Hello много раз, но каждый раз по-новому.'},
+    {slide:1,title:'MY NAME IS…',cue:'Banana Microphone ждёт твоё имя 🍌🎤',focus:[66.7,33.3,31.2,49],label:'BANANA MIC',action:'name',script:'Передавайте «банан-микрофон». Каждый ребёнок говорит My name is… В приложении можно добавить имена по очереди.',note:'10–15 мин · Главная цель — успешная мини-фраза каждого ребёнка.'},
+    {slide:2,title:'EMOTION SCANNER',cue:'Покажи Boo: HAPPY 😁 и SAD 😢',focus:[3.8,34.3,29,48],label:'HAPPY / SAD',action:'emotion',script:'Очень ярко сыграйте Happy и Sad лицом и телом. Дети копируют. Никаких длинных объяснений.',note:'15–18 мин · Для завершения нажмите и HAPPY, и SAD.'},
+    {slide:2,title:'EMOJI CAMERA',cue:'3… 2… 1… Сделай самое смешное лицо! 📸',focus:[34.5,34.3,32,48],label:'EMOJI CAMERA',action:'camera',script:'Три кадра: HAPPY, SAD, SUPER HAPPY. На каждый CLICK дети мгновенно замирают с нужной эмоцией.',note:'18–23 мин · Быстрая смена эмоций и много смеха.'},
+    {slide:2,title:'YES / NO',cue:'Отвечай только YES или NO ✅❌',focus:[67.7,34.3,30.2,48],label:'YES / NO',action:'yesno',script:'Задавайте очевидные вопросы по картинкам. Нужна автоматическая реакция Yes / No, а не объяснение правила.',note:'23–25 мин · 4 коротких раунда.'},
+    {slide:3,title:'MAGIC ENGLISH',cue:'Английские слова теперь управляют телом! 🪄',focus:[2,34.2,32,49],label:'5 КОМАНД',action:'command',script:'Нажимайте Stand up / Sit down / Jump / Dance / Freeze. Выполняйте вместе. Смысл показывается телом.',note:'25–28 мин · Для завершения активируйте все 5 команд.'},
+    {slide:3,title:'TEACHER REMOTE',cue:'Теперь ребёнок управляет учителем! 🎮',focus:[34.7,34.2,32,49],label:'MAGIC REMOTE',action:'remote',script:'Передайте воображаемый/игрушечный пульт ребёнку. Учитель обязан смешно выполнять выпавшую команду.',note:'28–30 мин · Три случайные команды достаточно.'},
+    {slide:3,title:'BOO SAYS',cue:'Boo says — двигайся. NOT BOO — замри! 👾',focus:[67.5,34.2,30.5,49],label:'BOO SAYS',action:'boosays',script:'Никто не выбывает. Ошибка = смешной OOPS и следующий раунд. Важен азарт, не соревнование.',note:'30–34 мин · 6 быстрых раундов.'},
+    {slide:4,title:'TEACHER BATTERY',cue:'О нет! Учитель разрядился до 1% 🪫',focus:[1.4,28.4,31.7,68.3],label:'BATTERY 1%',action:'teacher-error',script:'Начните двигаться как сломанный робот: «Hel…lo… ERROR…» и замрите. Дети должны захотеть вас спасти.',note:'34–35 мин · Кульминационный комический сбой.'},
+    {slide:4,title:'HIGH FIVE POWER',cue:'Заряди учителя английскими суперсилами ⚡',focus:[34.1,28.4,31.8,68.3],label:'ЗАРЯДКА',action:'charge',script:'Дети активируют Hello, Happy, Jump, Dance, High five. На каждом слове батарея растёт. Учитель постепенно «оживает».',note:'35–37 мин · Нужно использовать все 5 English powers.'},
+    {slide:4,title:'SECRET ENGLISH CLUB',cue:'Пройди 5 испытаний и открой секретную дверь 🔐',focus:[66.8,28.4,31.8,68.3],label:'SECRET CLUB',action:'club',script:'Испытания по начальному сценарию: Hello → Stand up → Jump → My name is… → Freeze. После пятого дверь открывается.',note:'37–39 мин · Никаких оценок, только ACCESS GRANTED.'},
+    {slide:5,title:'YOU UNDERSTAND ENGLISH!',cue:'Теперь без картинок и без перевода. Просто слушай! 🧠',focus:[1.4,27.2,48.3,33.8],label:'БЕЗ ПЕРЕВОДА',action:'understand',script:'Это главный психологический момент. Показывайте только английскую команду: Stand up, Jump, Freeze, Sit down, Happy, Hello. В конце скажите по-русски: «Я ни слова не сказала по-русски, а вы всё поняли».',note:'39–43 мин · Сильный момент «Я уже понимаю английский».'},
+    {slide:5,title:'OFFICIAL ENGLISH HUMAN',cue:'Ты прошёл первый уровень! Получи бейдж 🏅',focus:[50.5,27.2,48,33.8],label:'НАГРАДА',action:'award',script:'Вручите статус OFFICIAL ENGLISH HUMAN. Не «оценка», а игровой статус после первой миссии.',note:'43–46 мин · Можно выдать бумажную наклейку.'},
+    {slide:5,title:'BYE-BYE, BOO!',cue:'Попрощайся с Boo: BYE-BYE! 👋',focus:[1.4,62,48.3,34],label:'BYE-BYE',action:'bye',script:'Скажите Bye-bye, Boo. Через секунду Boo неожиданно возвращается: WAIT!!! … HIGH FIVE!',note:'46–48 мин · Комический ложный финал.'},
+    {slide:5,title:'ENGLISH EXIT',cue:'Последний пароль: BYE-BYE + HIGH FIVE! ✋',focus:[50.5,62,48,34],label:'HIGH FIVE',action:'highfive',script:'У двери каждый ребёнок говорит Bye-bye и даёт High five. Последнее действие на уроке должно быть английским.',note:'48–50 мин · Финальная точка и 100% English Power.'}
+  ];
+
+  const allowedActions={
+    0:['start','red'],1:['loading'],2:['accept','decline'],3:['hello'],4:['battle'],5:['name'],
+    6:['happy','sad'],7:['camera'],8:['yes','no'],9:['command'],10:['remote'],11:['boosays'],
+    12:['teacher-error'],13:['charge'],14:['club'],15:['next-final-command'],16:['award'],17:['bye'],18:['highfive']
+  };
+
+  function showSlide(index){slides.forEach((s,i)=>s.classList.toggle('active',i===index));}
+  function maxUnlocked(){let m=0;while(m<steps.length && completed.has(m))m++;return Math.min(m,steps.length-1);}
+  function updatePower(){power=Math.min(100,[...completed].reduce((sum,i)=>sum+(i===18?10:5),0));powerBar.style.width=power+'%';powerText.textContent=power+'%';}
+  function setFocus(step){if(resourceMode){focus.classList.remove('on');stepCue.textContent='Визуальный пак · служебная страница';return;}const [l,t,w,h]=step.focus;focus.style.left=l+'%';focus.style.top=t+'%';focus.style.width=w+'%';focus.style.height=h+'%';focusLabel.textContent=step.label||'НАЖМИ СЮДА';focus.classList.add('on');stepCue.textContent=step.cue;}
+  function updateTeacher(){const s=steps[current];teacherStep.innerHTML=`<span>Миссия ${current+1}/19</span><b>${s.title}</b>`;teacherScript.innerHTML=`<b>Что делает учитель:</b><br>${s.script}`;teacherNote.textContent=s.note;}
+  function updateDots(){dots.innerHTML='';steps.forEach((s,i)=>{const b=document.createElement('button');b.setAttribute('aria-label',`Миссия ${i+1}: ${s.title}`);b.className=(completed.has(i)?'done ':'')+(i===current?'current ':'')+(i>maxUnlocked()?'locked':'');b.title=`${i+1}. ${s.title}`;

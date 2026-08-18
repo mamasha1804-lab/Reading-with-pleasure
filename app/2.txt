@@ -1,0 +1,73 @@
+    document.getElementById('ynYes').addEventListener('click',()=>answer('yes'));document.getElementById('ynNo').addEventListener('click',()=>answer('no'));
+  }
+  function remoteGame(){
+    const words=['Jump!','Dance!','Freeze!','Sit down!','Stand up!'];let count=0;
+    openDialog(`<h2 class="dialog-title">🎮 TEACHER REMOTE</h2><p class="dialog-sub">Ребёнок нажимает пульт. Учитель ОБЯЗАН выполнить команду максимально смешно.</p><div style="text-align:center;font-size:5rem">🎮</div><div class="round-prompt" id="remoteWord">READY?</div><button class="dialog-main-btn" id="remoteNext">⭐ PRESS REMOTE</button><div class="dialog-score" id="remoteScore">0/3 commands</div>`);
+    document.getElementById('remoteNext').addEventListener('click',()=>{const w=words[Math.floor(Math.random()*words.length)];count++;document.getElementById('remoteWord').textContent=w;speak(w);document.getElementById('remoteScore').textContent=`${Math.min(count,3)}/3 commands`;if(count>=3&&!completed.has(10)){completeStep(10,'🎮 Teacher Remote unlocked!');dialogContent.insertAdjacentHTML('beforeend',successBox('Теперь дети знают: английский умеет управлять учителем 😂'));document.getElementById('remoteNext').disabled=true;bindDialogNext()}})
+  }
+  function booSaysGame(){
+    let r=0,score=0,shouldMove=true;
+    const commands=['Jump!','Dance!','Stand up!','Sit down!','Freeze!'];
+    openDialog(`<h2 class="dialog-title">👾 BOO SAYS</h2><p class="dialog-sub">Boo says… → выполняй. NOT BOO → ничего не делай. Никто не выбывает!</p><div class="round-prompt" id="bsPrompt"></div><div class="dialog-grid"><button id="bsMove">✅ MOVE!</button><button id="bsStop">✋ DON'T MOVE!</button></div><div class="dialog-score" id="bsScore">Раунд 1/6</div>`);
+    const next=()=>{shouldMove=Math.random()>.38;const w=commands[Math.floor(Math.random()*commands.length)];document.getElementById('bsPrompt').textContent=(shouldMove?'Boo says: ':'NOT BOO: ')+w;if(shouldMove)speak(w)};
+    const answer=move=>{if(move===shouldMove){score++;beep()}else{beep(true);showToast('😂 OOPS! Никто не выбывает!')}r++;if(r>=6){document.getElementById('bsScore').textContent=`${score}/6 correct · GAME COMPLETE`;completeStep(11,'👾 BOO SAYS complete!');dialogContent.insertAdjacentHTML('beforeend',successBox('Ошибки здесь смешные, а не страшные.'));bindDialogNext();return}document.getElementById('bsScore').textContent=`${score} correct · Раунд ${r+1}/6`;next()};
+    document.getElementById('bsMove').addEventListener('click',()=>answer(true));document.getElementById('bsStop').addEventListener('click',()=>answer(false));next();
+  }
+  function clubGame(){
+    if(charge<100){showToast('🔋 Сначала заряди учителя до 100%!');beep(true);return}
+    const first=childNames[0]||'Boo';
+    const tests=[['👋','Say: Hello!','Hello!'],['🧍','Do: Stand up!','Stand up!'],['⬆️','Do: Jump!','Jump!'],['🍌',`Say: My name is ${first}!`,`My name is ${first}`],['❄️','Do: Freeze!','Freeze!']];let r=0;
+    openDialog(`<h2 class="dialog-title">🔐 SECRET ENGLISH CLUB</h2><p class="dialog-sub">Пять испытаний. Учитель нажимает DONE, когда класс выполнил задание.</p><div class="emotionBig" id="clubEmoji" style="text-align:center;font-size:4.5rem">${tests[0][0]}</div><div class="round-prompt" id="clubPrompt">${tests[0][1]}</div><button class="dialog-main-btn" id="clubDone">DONE ✓</button><div class="dialog-score" id="clubScore">1/5</div>`);
+    speak(tests[0][2]);
+    document.getElementById('clubDone').addEventListener('click',()=>{r++;if(r>=tests.length){const door=document.getElementById('clubDoor');door.classList.add('unlocked');door.querySelector('em').textContent='🔓 ACCESS GRANTED';completeStep(14,'🔓 ACCESS GRANTED!');confetti(55);dialogContent.insertAdjacentHTML('beforeend',successBox('WELCOME TO THE SECRET ENGLISH CLUB!'));document.getElementById('clubDone').disabled=true;bindDialogNext();return}document.getElementById('clubEmoji').textContent=tests[r][0];document.getElementById('clubPrompt').textContent=tests[r][1];document.getElementById('clubScore').textContent=`${r+1}/5`;speak(tests[r][2])})
+  }
+  function understandGame(){
+    const cmds=['Stand up!','Jump!','Freeze!','Sit down!','Happy!','Hello!'];let r=0;
+    openDialog(`<h2 class="dialog-title">🧠 YOU UNDERSTAND ENGLISH!</h2><p class="dialog-sub"><b>Никаких картинок и перевода.</b> Дети просто слышат/читают команду и выполняют.</p><div class="no-picture" id="underWord">${cmds[0]}</div><button class="dialog-main-btn" id="underDone">Выполнили ✓</button><div class="dialog-score" id="underScore">1/6</div>`);speak(cmds[0]);
+    document.getElementById('underDone').addEventListener('click',()=>{r++;if(r>=cmds.length){completeStep(15,'✨ YOU UNDERSTAND ENGLISH!');dialogContent.insertAdjacentHTML('beforeend',successBox('«Я сейчас ни одного слова по-русски не сказала. А вы всё поняли!»'));document.getElementById('underDone').disabled=true;bindDialogNext();return}document.getElementById('underWord').textContent=cmds[r];document.getElementById('underScore').textContent=`${r+1}/6`;speak(cmds[r])})
+  }
+  function missionMap(){
+    openDialog(`<h2 class="dialog-title">🗺️ 19 миссий первого урока</h2><p class="dialog-sub">Зелёные уже пройдены. Фиолетовая — текущая.</p><div class="mission-map">${steps.map((s,i)=>`<button data-map="${i}" class="${completed.has(i)?'done ':''}${i===current?'current':''}"><strong>${i+1}</strong><span>${s.title}</span><em>${completed.has(i)?'✓':i===current?'▶':'•'}</em></button>`).join('')}</div>`);
+    dialogContent.querySelectorAll('[data-map]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.map;if(i<=maxUnlocked()||completed.has(i)){dialog.close();goStep(i)}else showToast('🔒 Сначала предыдущие миссии')}));
+  }
+  function finishModal(){
+    openDialog(`<h2 class="dialog-title">🎉 LEVEL 1 COMPLETE!</h2><p class="dialog-sub">Первый урок закончен именно так, как задуман: ребёнок ушёл с ощущением «Я понимаю английский!»</p><div style="text-align:center;font-size:5rem">🏅</div><div class="dialog-success">ENGLISH POWER: 100% ⚡</div><div class="dialog-actions"><button class="dialog-main-btn" id="finishHome">К началу</button><button class="dialog-main-btn" id="finishReset">Пройти заново</button></div>`);
+    document.getElementById('finishHome').addEventListener('click',()=>{dialog.close();goStep(0)});document.getElementById('finishReset').addEventListener('click',()=>location.reload());
+  }
+
+  document.getElementById('dialogClose').addEventListener('click',()=>dialog.close());
+  dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+
+  document.addEventListener('click',e=>{
+    const el=e.target.closest('[data-action]');if(!el)return;
+    const action=el.dataset.action;
+    if(resourceMode)return;
+    if(action==='start'){showToast('🚀 Миссия началась! Теперь красная кнопка.');return}
+    if(!(allowedActions[current]||[]).includes(action)){showToast(`👉 Сейчас миссия ${current+1}: ${steps[current].title}`);return}
+
+    if(current===0&&action==='red'){
+      beep(true);document.getElementById('loadingOverlay').classList.add('on');showToast('💥 ОЙ! Что мы наделали?!');completeStep(0,null,true);
+    }
+    else if(current===1&&action==='loading'){
+      const over=document.getElementById('loadingOverlay');over.classList.add('on');setTimeout(()=>over.querySelector('i').style.width='100%',60);speak('English mode activated');showToast('⚡ ENGLISH MODE ACTIVATED! Russian unavailable');completeStep(1,null,true);
+    }
+    else if(current===2&&action==='decline'){
+      beep(true);const p=document.getElementById('callPulse');p.classList.remove('on');void p.offsetWidth;p.classList.add('on');showToast('📞 Boo звонит СНОВА! 😂 Нажми ACCEPT');
+    }
+    else if(current===2&&action==='accept'){
+      const p=document.getElementById('callPulse');p.classList.add('on');speak('Hello!');showToast('👾 Boo: HELLOOOOO!');completeStep(2,null,true);
+    }
+    else if(current===3&&action==='hello') greetingGame();
+    else if(current===4&&action==='battle') helloBattle();
+    else if(current===5&&action==='name') nameGame();
+    else if(current===6&&(action==='happy'||action==='sad')){
+      emotionDone.add(action);speak(action==='happy'?'Happy':'Sad');showToast(action==='happy'?'😁 HAPPY!':'😢 SAD!');if(emotionDone.size===2)completeStep(6,'🎭 Emotion Scanner complete!');
+    }
+    else if(current===7&&action==='camera') cameraGame();
+    else if(current===8&&(action==='yes'||action==='no')) yesNoGame();
+    else if(current===9&&action==='command'){
+      const word=el.dataset.word;commandDone.add(word);speak(word);el.animate([{transform:'scale(1)'},{transform:'scale(1.08)'},{transform:'scale(1)'}],{duration:380});showToast(`🪄 ${word} · ${commandDone.size}/5`);if(commandDone.size===5)completeStep(9,'🪄 MAGIC ENGLISH unlocked!');
+    }
+    else if(current===10&&action==='remote') remoteGame();
+    else if(current===11&&action==='boosays') booSaysGame();
+    else if(current===12&&action==='teacher-error'){

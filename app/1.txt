@@ -1,0 +1,70 @@
+      b.addEventListener('click',()=>{
+        if(i<=maxUnlocked() || completed.has(i)) goStep(i); else showToast('🔒 Сначала пройди предыдущие миссии');
+      });
+      dots.appendChild(b);
+    });
+  }
+  function goStep(i){
+    resourceMode=false;
+    current=Math.max(0,Math.min(steps.length-1,i));
+    const s=steps[current];showSlide(s.slide);scenarioStep.textContent=`${current+1}/19`;scenarioTitle.textContent=s.title;
+    setFocus(s);updateTeacher();updateDots();
+    document.getElementById('prevBtn').disabled=current===0;
+    document.getElementById('nextBtn').textContent=current===18?'Финиш ✓':'Дальше →';
+    if(s.slide===4){document.getElementById('teacherBatteryBar').style.width=charge+'%';document.getElementById('miniBattery').style.width=charge+'%';document.getElementById('teacherBatteryText').textContent='TEACHER BATTERY: '+charge+'%'}
+  }
+  function goNext(force=false){
+    if(current===18){if(completed.has(18)) finishModal();else showToast('Сначала заверши ENGLISH EXIT ✋');return;}
+    if(!force&&!completed.has(current)){showToast('⭐ Сначала заверши текущую миссию');return;}
+    goStep(current+1);
+  }
+  function completeStep(i,message,auto=false){
+    if(!completed.has(i)){completed.add(i);updatePower();updateDots();confetti(18);}
+    if(message)showToast(message);
+    if(auto && i===current && i<18)setTimeout(()=>goStep(i+1),850);
+  }
+  function showToast(msg){
+    toast.textContent=msg;toast.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),1500);
+  }
+  function speak(text,rate=.9,pitch=1.05){
+    if(!sound||!('speechSynthesis' in window))return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=rate;u.pitch=pitch;speechSynthesis.speak(u)}catch(e){}
+  }
+  function beep(bad=false){
+    if(!sound)return;try{const C=window.AudioContext||window.webkitAudioContext;const ctx=new C();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type=bad?'sawtooth':'sine';o.frequency.value=bad?180:690;g.gain.setValueAtTime(.055,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.2);o.start();o.stop(ctx.currentTime+.2)}catch(e){}
+  }
+  function confetti(count=42){
+    const box=document.getElementById('confetti');
+    for(let i=0;i<count;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.top=(-6-Math.random()*16)+'%';p.style.background=['#ffd75a','#ff83b1','#61d3c0','#7658dc','#65cafa'][i%5];p.style.animationDelay=Math.random()*.35+'s';p.style.animationDuration=(1.05+Math.random()*.75)+'s';box.appendChild(p);setTimeout(()=>p.remove(),2300)}
+  }
+  function openDialog(html){dialogContent.innerHTML=html;dialog.showModal()}
+  function successBox(text,next=true){return `<div class="dialog-success">${text}</div>${next?'<div class="dialog-actions"><button class="dialog-main-btn" data-dialog-next>Следующая миссия →</button></div>':''}`}
+  function bindDialogNext(){const b=dialogContent.querySelector('[data-dialog-next]');if(b)b.addEventListener('click',()=>{dialog.close();goNext(true)})}
+
+  function greetingGame(){
+    let taps=0;
+    openDialog(`<h2 class="dialog-title">👾 BOO SAYS HELLO</h2><p class="dialog-sub">Помаши Boo. Нажми HELLO и повтори вместе с ним.</p><div style="text-align:center;font-size:6rem">👾</div><button class="dialog-main-btn" id="helloTap">👋 HELLO!</button><div class="dialog-score" id="helloScore">0/3 Hello</div>`);
+    document.getElementById('helloTap').addEventListener('click',()=>{taps++;speak('Hello!');beep();document.getElementById('helloScore').textContent=`${Math.min(taps,3)}/3 Hello`;if(taps>=3){completeStep(3,'👋 HELLO! Boo тебя понял');dialogContent.insertAdjacentHTML('beforeend',successBox('⭐ Первое английское слово уже работает!'));document.getElementById('helloTap').disabled=true;bindDialogNext()}})
+  }
+  function helloBattle(){
+    const voices=[['🐭 MOUSE','Hello',1.3,1.6],['🦖 GIANT','Hello',.56,.66],['🤖 ROBOT','Hel-lo',.72,.8],['😴 SLEEPY','Hello',.55,.9],['👻 GHOST','Helloooo',.62,1.2],['🥶 FROZEN','H-h-hello',.82,1.35],['🤪 CRAZY','Helloooo!',1.05,1.45]];
+    const used=new Set();
+    openDialog(`<h2 class="dialog-title">🎤 HELLO BATTLE</h2><p class="dialog-sub">Скажи Hello всеми семью голосами.</p><div class="dialog-grid">${voices.map((v,i)=>`<button class="voice-card" data-voice="${i}">${v[0]}</button>`).join('')}</div><div class="dialog-score" id="battleScore">0/7 voices</div>`);
+    dialogContent.querySelectorAll('[data-voice]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.voice,v=voices[i];speak(v[1],v[2],v[3]);used.add(i);b.classList.add('done');document.getElementById('battleScore').textContent=`${used.size}/7 voices`;if(used.size===7&&!completed.has(4)){completeStep(4,'🏆 HELLO MASTER!');dialogContent.insertAdjacentHTML('beforeend',successBox('Boo сдаётся: вы умеете говорить Hello как угодно 😄'));bindDialogNext()}}));
+  }
+  function nameGame(){
+    openDialog(`<h2 class="dialog-title">🍌 BANANA MICROPHONE</h2><p class="dialog-sub">Передавайте банан по кругу. Добавляйте имена детей по одному.</p><div style="text-align:center;font-size:5rem">🍌🎤</div><input class="name-input" id="childName" placeholder="Например: Masha"><div class="dialog-actions"><button class="dialog-main-btn" id="addName">🎤 My name is…</button><button class="dialog-main-btn" id="finishNames" disabled>Готово ✓</button></div><div class="name-list" id="nameList"></div><div class="dialog-score" id="nameResult">Каждый ребёнок получает свою короткую победу.</div>`);
+    const input=document.getElementById('childName'),list=document.getElementById('nameList'),finish=document.getElementById('finishNames');
+    const add=()=>{const n=input.value.trim();if(!n){document.getElementById('nameResult').textContent='Введите имя 🙂';return}childNames.push(n);speak('My name is '+n);const chip=document.createElement('span');chip.textContent='⭐ '+n;list.appendChild(chip);input.value='';finish.disabled=false;document.getElementById('nameResult').textContent=`My name is ${n}!`;input.focus()};
+    document.getElementById('addName').addEventListener('click',add);input.addEventListener('keydown',e=>{if(e.key==='Enter')add()});
+    finish.addEventListener('click',()=>{completeStep(5,'🍌 Banana Microphone complete!');dialogContent.insertAdjacentHTML('beforeend',successBox(`Boo познакомился: ${childNames.length} ${childNames.length===1?'имя':'имён'}!`));finish.disabled=true;bindDialogNext()});
+  }
+  function cameraGame(){
+    const rounds=[['😁','HAPPY!'],['😢','SAD!'],['🤪','SUPER MEGA HAPPY!']];let r=0;
+    openDialog(`<h2 class="dialog-title">📸 EMOJI CAMERA</h2><p class="dialog-sub">На CLICK все замирают с нужным лицом.</p><div class="camera-stage" id="cameraStage"><div><div class="face" id="cameraFace">${rounds[0][0]}</div><div class="round-prompt" id="cameraPrompt">${rounds[0][1]}</div></div></div><button class="dialog-main-btn" id="cameraClick">📸 3… 2… 1… CLICK!</button><div class="dialog-score" id="cameraScore">Кадр 1/3</div>`);
+    document.getElementById('cameraClick').addEventListener('click',()=>{const st=document.getElementById('cameraStage');st.classList.remove('flash');void st.offsetWidth;st.classList.add('flash');beep();r++;if(r>=rounds.length){document.getElementById('cameraScore').textContent='📸 Альбом Boo готов!';completeStep(7,'📸 SUPER HAPPY PHOTO!');dialogContent.insertAdjacentHTML('beforeend',successBox('Boo сохранил самые смешные лица 😄'));document.getElementById('cameraClick').disabled=true;bindDialogNext();return}document.getElementById('cameraFace').textContent=rounds[r][0];document.getElementById('cameraPrompt').textContent=rounds[r][1];document.getElementById('cameraScore').textContent=`Кадр ${r+1}/3`})
+  }
+  function yesNoGame(){
+    const rounds=[['👾','Is this Boo?','yes'],['🍌🎤','Is this the banana microphone?','yes'],['🎤','Is this the banana microphone?','no'],['🔴','Should we press the red button?','yes']];let r=0,score=0;
+    openDialog(`<h2 class="dialog-title">✅ YES / ❌ NO</h2><p class="dialog-sub">Отвечай быстро. Только YES или NO.</p><div class="emotionBig" id="ynEmoji" style="text-align:center;font-size:5rem">${rounds[0][0]}</div><div class="round-prompt" id="ynPrompt">${rounds[0][1]}</div><div class="dialog-grid"><button id="ynYes">YES</button><button id="ynNo">NO</button></div><div class="dialog-score" id="ynScore">Раунд 1/4</div>`);
+    const answer=a=>{speak(a==='yes'?'Yes':'No');if(a===rounds[r][2]){score++;beep()}else beep(true);r++;if(r>=rounds.length){document.getElementById('ynScore').textContent=`${score}/4 · YES / NO complete!`;completeStep(8,'✅ YES / NO MASTER!');dialogContent.insertAdjacentHTML('beforeend',successBox('Главное — быстрая реакция, не идеальный счёт.'));bindDialogNext();return}document.getElementById('ynEmoji').textContent=rounds[r][0];document.getElementById('ynPrompt').textContent=rounds[r][1];document.getElementById('ynScore').textContent=`${score} correct · Раунд ${r+1}/4`};
